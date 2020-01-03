@@ -121,9 +121,9 @@ public class Nabanagrams {
 			strings.add(word);
 		}
 		
-		ComboFinder cf = new ComboFinder(strings, minWordLength, maxWordLength);
-		while (cf.hasNext()) {
-			Combo combo = cf.next();
+		ComboIterator ci = new ComboIterator(strings, minWordLength, maxWordLength);
+		while (ci.hasNext()) {
+			Combo combo = ci.next();
 			if (wordMap.get(combo.sortedWord) != null) {
 				return combo;
 			}
@@ -187,24 +187,23 @@ public class Combo {
 	}
 }
 
-public class ComboFinder implements Iterator<Combo> {
-	int minLength;
-	int maxLength;
+public class ComboIterator implements Iterator<Combo> {
+	int minWordLength;
+	int maxWordLength;
 	List<String> strings;
-	List<Integer> next;
 	int numLetters;
 	int nextElement;
 	// TODO: use a stack of strings, and a stack of ints to represent their indexes (?)
-	Stack<Integer> s;
+	Stack<Integer> next;
 	
-	public ComboFinder(List<String> strings, int minLength, int maxLength) {
+	public ComboIterator(List<String> strings, int minWordLength, int maxWordLength) {
 		this.strings = strings;
-		this.minLength = minLength;
-		this.maxLength = maxLength;
+		this.minWordLength = minWordLength;
+		this.maxWordLength = maxWordLength;
 		numLetters = 0;
 		nextElement = 0;
 		if (strings.size() >= 2) {
-			next = new LinkedList<Integer>();
+			next = new Stack<Integer>();
 			prepareNext();
 		} else {
 			next = null;
@@ -216,10 +215,16 @@ public class ComboFinder implements Iterator<Combo> {
 	}
 
 	public Combo next() {
-		//Convert the list of indexes into an actual list of strings.
+		// Convert the stack of indexes into an actual list of strings.
 		List<String> list = new ArrayList<String>(next.size());
-		for (Integer i : next) {
-			list.add(strings.get(i));
+		Stack<Integer> temp = new Stack<Integer>();
+		while (!next.isEmpty()) {
+			int index = next.pop();
+			temp.push(index);
+			list.add(strings.get(index));
+		}
+		while (!temp.isEmpty()) {
+			next.push(temp.pop());
 		}
 		Combo result = new Combo(list);
 		prepareNext();
@@ -231,10 +236,11 @@ public class ComboFinder implements Iterator<Combo> {
 			return;
 		}
 		do {
-			if (numLetters >= maxLength || nextElement >= strings.size()) {
-				if (next.get(next.size() - 1) == strings.size() - 1) {		//while the last element is the last possible string
-					numLetters -= strings.get(strings.size() - 1).length();		// lower the 
-					next.remove(next.size() - 1);				// remove the element
+			if (numLetters >= maxWordLength || nextElement >= strings.size()) {
+				// If the last index in the combo corresponds to the last possible string:
+				if (next.peek() == strings.size() - 1) {
+					int removedIndex = next.pop();
+					numLetters -= strings.get(removedIndex).length();
 				}
 				
 				// We've gone through every combo
@@ -243,21 +249,19 @@ public class ComboFinder implements Iterator<Combo> {
 					return;
 				}
 				
-				// Increment the last element in the combo, update numLetters accordingly
-				int lastIndex = next.size() - 1;
-				int oldLength = strings.get(next.get(lastIndex)).length();
-				nextElement = next.get(lastIndex) + 1;
-				next.set(lastIndex, nextElement); //increment last element
-				int newLength = strings.get(nextElement).length();
-				numLetters += (newLength - oldLength);
+				int poppedIndex = next.pop();
+				numLetters -= strings.get(poppedIndex).length();
+				nextElement = poppedIndex + 1;	
+				next.push(nextElement);
+				numLetters += strings.get(nextElement).length();
 				nextElement++;
 			} else {
-				// We can add the nextElement to 
-				next.add(nextElement);
+				// We can add the nextElement to the stack
+				next.push(nextElement);
 				numLetters += strings.get(nextElement).length();
 				nextElement++;
 			}
-		} while (next.size() <= 1 || numLetters > maxLength || numLetters < minLength);
+		} while (numLetters < minWordLength || numLetters > maxWordLength || next.size() < 2);
 	}
 }
 
