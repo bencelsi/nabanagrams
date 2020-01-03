@@ -4,15 +4,15 @@ import java.util.*;
 import java.io.IOException; 
 
 public class Nabanagrams {
-	static Set<String> words = new HashSet<String>();
-	static Map<String, String> wordMap = new HashMap<String, String>();
+	static Set<String> validWords;
 	static List<String> lettersLeft; //TODO: store as distribution array
 	static List<String> freeLetters;
-	static List<String> yourWords;
-	static List<String> myWords;
-	static final int[] letterDistribution = {13, 3, 3, 6, 18, 3, 4, 3, 12, 2, 2, 5, 3, 8, 11, 3, 2, 9, 6, 9, 6, 3, 3, 2, 3, 2};
+	static List<String> words;
 	static int maxWordLength;
-
+	static final int minWordLength = 3;
+	static final int[] letterDistribution = {13, 3, 3, 6, 18, 3, 4, 3, 12, 2, 2, 5, 3, 8, 11, 3, 2, 9, 6, 9, 6, 3, 3, 2, 3, 2};
+	static Map<String, String> wordMap;
+	
 	public static void main(String[] args) {
 		System.out.println();
 		System.out.println("---------------------------");	
@@ -23,12 +23,11 @@ public class Nabanagrams {
 		setup("dictionary.csv");
 		while (true) {
 			newGame();
-			System.out.println("Game over! Thanks for playing");
 		}
 	}
 	
-	//One-time setup: reads in dictionary file and creates sorted word -> word mapping
-	public static void setup(String dictionaryFilename) {
+	// One-time setup: reads in dictionary file and creates sorted word -> word mapping
+	private static void setup(String dictionaryFilename) {
 		System.out.println("Reading in dictionary file.....");
 		Scanner s = null;
 		try {
@@ -38,13 +37,13 @@ public class Nabanagrams {
 			System.exit(1);
 		}
 		// Create mapping from sorted words to words
-		words = new HashSet<String>();
+		validWords = new HashSet<String>();
 		wordMap = new HashMap<String, String>();
 		maxWordLength = 0;
 		while (s.hasNextLine()) {
 			String word = s.nextLine().toUpperCase();
-			if (word.length() > 2) {
-				words.add(word);
+			if (word.length() >= minWordLength) {
+				validWords.add(word);
 				char[] chars = word.toCharArray();
 				Arrays.sort(chars);
 				String sortedWord = new String(chars);
@@ -57,8 +56,8 @@ public class Nabanagrams {
 		}
 	}
 	
-	//Starts a new game, returns when game ends
-	public static void newGame() {
+	// Starts a new game, returns when game ends
+	private static void newGame() {
 		System.out.println("Starting a new game...");
 		System.out.println();
 		
@@ -70,132 +69,93 @@ public class Nabanagrams {
 			}
 		}
 		freeLetters = new ArrayList<String>();
-		yourWords = new ArrayList<String>();
-		myWords = new ArrayList<String>();
+		words = new ArrayList<String>();
 		
 		//User input loop
 		Scanner s = new Scanner(System.in);
 		while (true) {
 			printGameState();	
 			String input = s.nextLine();
-			flipLetter();
-			List<String> newCombo = findCombo();
+			flipLetter(input);
+			Combo newCombo = findCombo();
 			while(newCombo != null) {
 				applyCombo(newCombo);
 				newCombo = findCombo();
 			}
 			System.out.println("Nothing found!");
 			if (lettersLeft.size() == 0) {
-				return;
+				printGameState();
+				System.out.println("Game over! Play again? (Y/N)");
+				if (s.nextLine().toUpperCase().equals("Y")) {
+					return;
+				} else {
+					System.exit(0);
+				}
 			}
 		}
 	}
 	
-	public static void flipLetter() {
-		int index = (int) Math.floor(Math.random() * lettersLeft.size());		
-		String letter = lettersLeft.get(index);
-		lettersLeft.remove(index);
+	// Randomly removes a letter from lettersLeft and adds it to freeLetters	
+	private static void flipLetter(String input) {
+		String letter = null;
+		if (input.equals("")) {
+			int index = (int) Math.floor(Math.random() * lettersLeft.size());		
+			letter = lettersLeft.get(index);
+			lettersLeft.remove(index);
+		} else {
+			letter = input.toUpperCase();
+		}
 		freeLetters.add(letter);
 		Collections.sort(freeLetters);
 		System.out.println("New letter: " + letter);	
 	}
 
-	public static List<String> findCombo() {
-		//System.out.print("Collecting strings... ");
+	// Finds a valid combo from words and freeLetters, or null if there is none
+	private static Combo findCombo() {
 		List<String> strings = new ArrayList<String>();
+		// TODO: give priority to new word letters?
 		for (String letter : freeLetters) {
 			strings.add(letter);
 		}
-		for (String word : myWords) {
-			strings.add(word);
-		}
-		for (String word : yourWords) {
+		for (String word : words) {
 			strings.add(word);
 		}
 		
-		ComboFinder cf = new ComboFinder(strings, 3, maxWordLength);
+		ComboFinder cf = new ComboFinder(strings, minWordLength, maxWordLength);
 		while (cf.hasNext()) {
-			List<String> combo = cf.next();
-			if (combo.size() >= 2 && checkCombo(combo)) {
+			Combo combo = cf.next();
+			if (wordMap.get(combo.sortedWord) != null) {
 				return combo;
 			}
-		}	
+		}
 		return null;
 	}
-
-	private static boolean checkCombo(List<String> combo) {
-		String sortedPermutation = concatenateSort(combo);	
-		String newWord = wordMap.get(sortedPermutation);
-		if (newWord != null) {
-			return true;
-		}
-		return false;
-	}
-
-	public static boolean applyCombo(List<String> combo) {
-		for (String str : combo) {		
+	
+	// Applies the given combo to the game state (removes the components and adds the new word)
+	private static boolean applyCombo(Combo combo) {
+		System.out.print("I found a word! ");
+		for (String str : combo.strings) {
+			System.out.print(str + " ");
 			if (str.length() == 1) {
 				int index = Collections.binarySearch(freeLetters, str);
 				freeLetters.remove(index);
 			} else {
-				int index = Collections.binarySearch(myWords, str);
-				myWords.remove(index);
+				int index = Collections.binarySearch(words, str);
+				words.remove(index);
 			}
-		}	
-		String sortedWord = concatenateSort(combo);
-		String newWord = wordMap.get(sortedWord);
-		myWords.add(newWord);
-		Collections.sort(myWords);
-		System.out.print("I found a word! ");
-		for (String str : combo) {
-			System.out.print(str + " ");
 		}
+		String newWord = wordMap.get(combo.sortedWord);
 		System.out.println("---> " + newWord);
+		words.add(newWord);
+		Collections.sort(words);
 		return true;
-		
 	}
 
-	// Stores all possible permutations of given list of strings into result
-	private static void generatePermutations(List<String> strings, List<List<String>> result) {
-		if (strings.size() <= 1) {
-			return;
-		}
-		List<String> allStrings = new ArrayList<String>();		
-		result.add(strings);
-		Set<String> hasBeenRemoved = new HashSet<String>();
-		for (int i = 0; i < strings.size(); i++) {
-			String temp = strings.get(i);
-			allStrings.add(strings.get(i));
-			if (!hasBeenRemoved.contains(temp)) {
-				strings.remove(i);
-				generatePermutations(strings, result);
-				strings.add(i, temp);
-				hasBeenRemoved.add(temp);
-			}
-		}
-		
-		result.add(allStrings);
-	}
-
-	private static String concatenateSort(List<String> strings) {
-		StringBuilder builder = new StringBuilder();
-		for (String string : strings) {
-			builder.append(string);
-		}
-		char[] chars = builder.toString().toCharArray();
-		Arrays.sort(chars);
-		return new String(chars);
-	}
-
-	public static void printGameState() {
+	// Prints the current state of the game and prompts the user to flip a letter or add a word or string
+	private static void printGameState() {
                 System.out.println();
-		System.out.print("Your words: \t");
-                for (String word : yourWords) {
-                        System.out.print(word + " ");
-                }
-                System.out.println();
-                System.out.print("My words: \t");
-                for (String word : myWords) {
+                System.out.print("Words: \t");
+                for (String word : words) {
                         System.out.print(word + " ");
                 }
                 System.out.println();
@@ -206,30 +166,44 @@ public class Nabanagrams {
 		System.out.println();
 		System.out.println("(Letters left: " + lettersLeft.size() + ")");
                 System.out.println();
-                System.out.println("Type a word to steal, or press 'enter' to flip a new letter");
+                System.out.println("Press 'enter' to flip a new letter, or enter a letter or word to add it");
                 System.out.println();
         }
 }
 
+public class Combo {
+	public List<String> strings;
+	public String sortedWord;
 
-//TODO: create NewCombo object - with 
+	public Combo(List<String> strings) {
+		this.strings = strings;
+		StringBuilder sb = new StringBuilder();
+                for (String str : strings) {
+                        sb.append(str);
+                }
+                char[] chars = sb.toString().toCharArray();
+                Arrays.sort(chars);
+                sortedWord = new String(chars);
+	}
+}
 
-
-public class ComboFinder implements Iterator<List<String>> {
+public class ComboFinder implements Iterator<Combo> {
+	int minLength;
+	int maxLength;
 	List<String> strings;
 	List<Integer> next;
 	int numLetters;
 	int nextElement;
-	int minLength;
-	int maxLength;
-
+	// TODO: use a stack of strings, and a stack of ints to represent their indexes (?)
+	Stack<Integer> s;
+	
 	public ComboFinder(List<String> strings, int minLength, int maxLength) {
 		this.strings = strings;
 		this.minLength = minLength;
 		this.maxLength = maxLength;
 		numLetters = 0;
 		nextElement = 0;
-		if (strings.size() >= 2) { 
+		if (strings.size() >= 2) {
 			next = new LinkedList<Integer>();
 			prepareNext();
 		} else {
@@ -241,30 +215,35 @@ public class ComboFinder implements Iterator<List<String>> {
 		return next != null;
 	}
 
-	public List<String> next() {
-		List<String> result = new ArrayList<String>(next.size());
+	public Combo next() {
+		//Convert the list of indexes into an actual list of strings.
+		List<String> list = new ArrayList<String>(next.size());
 		for (Integer i : next) {
-			result.add(strings.get(i));
+			list.add(strings.get(i));
 		}
-		prepareNext();	
+		Combo result = new Combo(list);
+		prepareNext();
 		return result;
 	}
 
 	private void prepareNext() {
 		if (next == null) {
 			return;
-		}			
+		}
 		do {
 			if (numLetters >= maxLength || nextElement >= strings.size()) {
 				if (next.get(next.size() - 1) == strings.size() - 1) {		//while the last element is the last possible string
-					numLetters -= strings.get(strings.size() - 1).length();		// lower
+					numLetters -= strings.get(strings.size() - 1).length();		// lower the 
 					next.remove(next.size() - 1);				// remove the element
 				}
+				
+				// We've gone through every combo
 				if (next.size() == 0) {
 					next = null;
 					return;
 				}
-
+				
+				// Increment the last element in the combo, update numLetters accordingly
 				int lastIndex = next.size() - 1;
 				int oldLength = strings.get(next.get(lastIndex)).length();
 				nextElement = next.get(lastIndex) + 1;
@@ -272,7 +251,8 @@ public class ComboFinder implements Iterator<List<String>> {
 				int newLength = strings.get(nextElement).length();
 				numLetters += (newLength - oldLength);
 				nextElement++;
-			} else {						
+			} else {
+				// We can add the nextElement to 
 				next.add(nextElement);
 				numLetters += strings.get(nextElement).length();
 				nextElement++;
@@ -280,3 +260,5 @@ public class ComboFinder implements Iterator<List<String>> {
 		} while (next.size() <= 1 || numLetters > maxLength || numLetters < minLength);
 	}
 }
+
+
