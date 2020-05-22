@@ -1,45 +1,61 @@
 import java.io.FileNotFoundException; 
 import java.io.FileReader;
-import java.util.*;
 import java.io.IOException;
 
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.Stack;
 
+
+// TODO - don't ask to take turn if  -  2 or fewer letters or only 1 word on board
+// say 'too short' not 'not valid' is valid 2 letter
+// don't take first option, take best option
+
+// TERMINOLOGY - 
+// Chunk: 	a group of tiles that can't be broken up. words and free tiles are both 'chunks' 
+// Combo: 	a group of at least 2 chunks.  Some combos can be stolen to form a new word
 
 public class Nabanagrams {
 	private static Set<String> dictionary;
 	private static int maxWordLength;
 	private static final int minWordLength = 3;
 	private static Map<String, String> wordMap;
-	private static Game game;
+	private static GameState game;
 	private static final String dictionaryFile = "dictionary.csv";
 	
 	public static void main(String[] args) {
-		System.out.println();
-		System.out.println("---------------------------");
+		System.out.println("\n---------------------------");
 		System.out.println("---N-A-B-A-N-A-G-R-A-M-S---");
-		System.out.println("---------------------------");
-		System.out.println();
-		
+		System.out.println("---------------------------\n");
 		setup();
 		Scanner s = new Scanner(System.in);
 		while (true) {
-			if (game != null) {
+			if (game != null && !game.isOver) {
 				System.out.println("Press enter to resume your game");
 			}
 			System.out.println("+ to start a new game");
 			System.out.println("* to start a new game in sandbox mode");
-			System.out.println("! to quit");
-			System.out.println();
+			System.out.println("! to quit\n");
 			String input = s.nextLine();
-			
 			if (input.equals("+")) {
-				enterGame(new Game(false), s);
+				game = new GameState(false);
+				enterGame(game, s);
 			} else if (input.equals("*")) {
-				enterSandbox(new Game(true), s);				
+				game = new GameState(true);
+				enterSandbox(game, s);
 			} else if (input.equals("!")) {
-				System.out.println("Bye!");
 				System.exit(0);
-			} else if (input.equals("") && game != null) {
+			} else if (input.equals("") && game != null && !game.isOver) {
 				if (game.isSandbox) {
 					enterSandbox(game, s);
 				} else {
@@ -54,9 +70,9 @@ public class Nabanagrams {
 		Scanner s = null;
 		try {
 			s = new Scanner(new FileReader(dictionaryFile));
-		} catch (Exception E) {
+		} catch (Exception e) {
 			System.out.println("Could not find file " + dictionaryFile);
-			System.exit(1);
+			System.exit(1);	
 		}
 
 		// Create mapping from sorted words to words
@@ -78,35 +94,31 @@ public class Nabanagrams {
 	}
 
 	// Starts a new game, returns when game ends
-	private static void enterGame(Game game, Scanner s) {
+	private static void enterGame(GameState game, Scanner s) {
 		while (true) {
-			game.printState();
+			game.print();
 			if (game.myTurn) {
-				System.out.println("Press 'enter' to let me take a turn");
+				System.out.print("Press 'enter' to let me take a turn, ");
 			} else if (game.lettersLeft() > 0) {
-				System.out.println("Press 'enter' to flip a new letter");
+				System.out.print("Press 'enter' to flip a new letter, ");
 			}
-			System.out.println("Enter a word to steal it");
-			System.out.println("? for more options");
-			System.out.println();	
+			System.out.println("or enter a word to steal it");
+			System.out.println("? for more options\n");
 			String input = s.nextLine().toUpperCase();
-			System.out.println("---------------------------------------");
-			System.out.println();
+			System.out.println("--------------------------------------\n");
+
 			if (input.equals("")) {
 				if (game.myTurn) {
 					List<String> newCombo = findCombo(game, null);
 					if (newCombo == null) {
 						System.out.println("I can't find anything!");
 					} else while (newCombo != null) {
-						String newWord = wordMap.get(sortStrings(newCombo));
+						String newWord = wordMap.get(sort(newCombo));
 						game.stealWord(newCombo, newWord, true);
 						newCombo = findCombo(game, null);
 					}
 					if (game.lettersLeft() == 0) {
-						System.out.println("Game over!");
-						game.printState();
-						game = null;
-						System.out.println("--------------------------------------");
+						game.end();
 						return;
 					}
 				} else if (game.lettersLeft() > 0) {
@@ -124,21 +136,19 @@ public class Nabanagrams {
 		}
 	}
 
-	private static void enterSandbox(Game game, Scanner s){
+	private static void enterSandbox(GameState game, Scanner s){
 		while (true) {
-			game.printState();
+			game.print();
 			System.out.println("Enter words or individual letters to add them to the table");
 			System.out.println("Press enter to let me try to find new words");
-			System.out.println("? for more options");
-			System.out.println();
+			System.out.println("? for more options\n");
 			String input = s.nextLine().toUpperCase();
-			System.out.println("---------------------------------------");
 			if (input.equals("")) {
 				List<String> newCombo = findCombo(game, null);
 				if (newCombo == null) {
 					System.out.println("I can't find anything!");
 				} else while (newCombo != null) {
-					String newWord = wordMap.get(sortStrings(newCombo));
+					String newWord = wordMap.get(sort(newCombo));
 					game.stealWord(newCombo, newWord, true);
 					newCombo = findCombo(game, null);
 				}
@@ -149,32 +159,33 @@ public class Nabanagrams {
 			}
 		}
 	}
-	
+
 	// Finds a valid combo from words and freeLetters, or returns null if there is none
-	private static List<String> findCombo(Game game, String goal) {
+	public static List<String> findCombo(GameState game, String goal) {
 		String sortedGoal = null;
 		if (goal != null) {
 			if (!dictionary.contains(goal)) {
 				System.out.println(goal + " is not a valid word");
 				return null;
 			}
-			sortedGoal = sortStrings(new ArrayList<String>(Arrays.asList(goal)));
+			sortedGoal = sort(new ArrayList<String>(Arrays.asList(goal)));
 		}
 
-		List<String> strings = new ArrayList<String>();
+		List<String> chunks = new ArrayList<String>();
 		for (String letter : game.freeLetters) {
-			strings.add(letter);
+			chunks.add(letter);
 		}
 		for (String word : game.yourWords) {
-			strings.add(word);
+			chunks.add(word);
 		}
-		for (String word : game.myWords) {
-			strings.add(word);
+		for (String word : game.myWords) { 
+			chunks.add(word);
 		}
 		
-		Combos combos = new Combos(strings, minWordLength, maxWordLength);
-		for (List<String> combo : combos) {
-			String sortedCombo = sortStrings(combo);
+		ComboIterator comboIterator = new ComboIterator(chunks, minWordLength, maxWordLength);
+		while (comboIterator.hasNext()) {
+			List<String> combo = comboIterator.next();
+			String sortedCombo = sort(combo);
 			if ((goal == null && wordMap.containsKey(sortedCombo)) || (goal != null && sortedGoal.equals(sortedCombo))) {
 				return combo;
 			}
@@ -185,10 +196,10 @@ public class Nabanagrams {
 		return null;
 	}
 
-	private static String sortStrings(List<String> strings) {
+	private static String sort(List<String> chunks) {
 		StringBuilder sb = new StringBuilder();
-		for (String str : strings) {
-			sb.append(str);
+		for (String chunk : chunks) {
+			sb.append(chunk);
 		}
 		char[] chars = sb.toString().toCharArray();
 		Arrays.sort(chars);
@@ -197,8 +208,7 @@ public class Nabanagrams {
 }
 
 
-
-public class Game {
+public class GameState {
 	public List<String> myWords = new ArrayList<String>();
 	public List<String> yourWords = new ArrayList<String>();
 	public List<String> freeLetters = new ArrayList<String>();
@@ -206,10 +216,11 @@ public class Game {
 	public int myPoints = 0;
 	public int yourPoints = 0;
 	public boolean myTurn  = false;
+	public boolean isOver = false;
 	public final boolean isSandbox;
 	private final int[] letterDistribution = {13, 3, 3, 6, 18, 3, 4, 3, 12, 2, 2, 5, 3, 8, 11, 3, 2, 9, 6, 9, 6, 3, 3, 2, 3, 2};
 	
-	public Game(boolean isSandbox) {
+	public GameState(boolean isSandbox) {
 		this.isSandbox = isSandbox;
 		if (!isSandbox) { 
 			for (int i = 0; i < letterDistribution.length; i++) {
@@ -233,54 +244,31 @@ public class Game {
 		return lettersLeft.size();
 	}
 
-	public void printState() {
-		System.out.println();
+	public void print() {
+		printList("\nFree letters", freeLetters);
+		System.out.println("(" + lettersLeft() + " left)\n");
 		if (isSandbox) {
 			printList("Words (" + myPoints + " pts)", myWords);	
-			printList("Free letters", freeLetters);
 		} else {
 			printList("Your words (" + yourPoints + " pts)", yourWords);
 			printList("My words (" + myPoints + " pts)" , myWords);
-			printList("Free letters", freeLetters);
-			if (lettersLeft() == 0) {
-				System.out.println("GAME OVER!");
-				if (myPoints == yourPoints) {
-					System.out.println("It's a tie! We must grudingly acknowledge that once again our skills have proven equal to each other's.");
-				} else if (myPoints > yourPoints) {
-					System.out.println("I win! You must grudingly acknowledge that once again my skills have proven superior to yours.");
-				} else {
-					System.out.println("You win! I must grudgingly acknowledge that once again your skills have proven superior to mine.");
-				}
-			} else {
-				System.out.println(lettersLeft() + " letters left");
-			}
-		}
-		System.out.println();
-	}
-
-	private void printList(String label, List<String> list){
-		System.out.print(label + ":\t");
-		if (list.size() == 0) {
-			System.out.print("(none)");
-		} else {
-			System.out.print(String.join(" ", list));
 		}
 		System.out.println();
 	}
 
 	public void stealWord(List<String> combo, String newWord, boolean mine) {
-		for (String str : combo) {
-			System.out.print(str + " ");
-			if (str.length() == 1) {
-				int index = Collections.binarySearch(freeLetters, str);
+		for (String chunk : combo) {
+			System.out.print(chunk + " ");
+			if (chunk.length() == 1) {
+				int index = Collections.binarySearch(freeLetters, chunk);
 				freeLetters.remove(index);
 			} else {
-				int index = Collections.binarySearch(yourWords, str);
+				int index = Collections.binarySearch(yourWords, chunk);
 				if (index >= 0) {
 					yourPoints -= (yourWords.get(index).length() - 2);
 					yourWords.remove(index);
 				} else {
-					index = Collections.binarySearch(myWords, str);
+					index = Collections.binarySearch(myWords, chunk);
 					myPoints -= (myWords.get(index).length() - 2);
 					myWords.remove(index);
 				}
@@ -314,104 +302,85 @@ public class Game {
 		Collections.sort(myWords);
 		Collections.sort(freeLetters);
 	}
-}
 
+	public void end() {
+		System.out.println("\n--------------------------------------");
+		System.out.println("--------------------------------------");
+		System.out.println("GAME OVER!");
+		if (myPoints == yourPoints) {
+			System.out.println("It's a tie! We must grudgingly acknowledge that once again our skills have proven equal to each other's.");
+		} else if (myPoints > yourPoints) {
+			System.out.println("I win! You must grudgingly acknowledge that once again my skills have proven superior to yours.");
+		} else {
+			System.out.println("You win! I must grudgingly acknowledge that once again your skills have proven superior to mine.");
 
-class Combos implements Iterable<List<String>> {
-	private final List<String> strings;
-	private final int minWordLength;
-	private final int maxWordLength;
-
-	public Combos(List<String> strings, int minWordLength, int maxWordLength) {
-		this.strings = strings;
-		this.minWordLength = minWordLength;
-		this.maxWordLength = maxWordLength;
+		}
+		System.out.println("--------------------------------------");
+		System.out.println("--------------------------------------\n");
+		isOver = true;
 	}
 
-	public Iterator<List<String>> iterator() {
-		return new ComboIterator(strings, minWordLength, maxWordLength);
+	private void printList(String label, List<String> list){
+		System.out.print(label + ":\t");
+		if (list.size() == 0) {
+			System.out.print("(none)");
+		} else {
+			System.out.print(String.join(" ", list));
+		}
+		System.out.println();
 	}
 }
 
 
 class ComboIterator implements Iterator<List<String>> {
-	private List<String> strings;
-	private int minWordLength;
-	private int maxWordLength;
-	private int[] lengths;
-	private int numLetters;
-	private int nextIndex;
-	private Stack<Integer> next;
+	private List<String> chunks; 		// The given words and free letters to consider
+	private int minWordLength;			// the shortest a word can be
+	private int maxWordLength;			// the longest a word can be (based on the dictionary)
+	private int comboLetters = 0;		// the number of letters in comboStack
+	private int chunkToAdd = 0;			// the index of the next chunk to add to comboStack
+	private Stack<Integer> comboStack;	// Stack of indexes that represent chunks in the next combo to return
 	
-	public ComboIterator(List<String> strings, int minWordLength, int maxWordLength) {
-		this.strings = strings;
+	public ComboIterator(List<String> chunks, int minWordLength, int maxWordLength) {
+		this.chunks = chunks;
 		this.minWordLength = minWordLength;
 		this.maxWordLength = maxWordLength;
-		numLetters = 0;
-		nextIndex = 0;
-		lengths = new int[strings.size()];
-		for (int i = 0; i < strings.size(); i++) {
-			lengths[i] = strings.get(i).length();	
-		}
-		if (strings.size() >= 2) {
-			next = new Stack<Integer>();
-			prepareNext();
-		} else {
-			next = null;
-		}
+		this.comboStack = new Stack<Integer>();
+		Collections.sort(chunks, Comparator.comparing(a -> a.length()));
+		prepareNext();
 	}
 
 	public boolean hasNext() {
-		return next != null;
+		return comboStack != null;
 	}
 
+	//returns the next vaild combo represented by comboStack
 	public List<String> next() {
-		// Convert the stack of indexes into an actual list of strings.
-		List<String> result = new ArrayList<String>(next.size());
-		Stack<Integer> temp = new Stack<Integer>();
-		while (!next.isEmpty()) {
-			int index = next.pop();
-			temp.push(index);
-			result.add(strings.get(index));
-		}
-		while (!temp.isEmpty()) {
-			next.push(temp.pop());
+		Stack<Integer> comboStackClone = (Stack<Integer>) comboStack.clone();
+		List<String> result = new ArrayList<String>();
+		while (!comboStackClone.isEmpty()) {
+			result.add(chunks.get(comboStackClone.pop()));
 		}
 		prepareNext();
 		return result;
 	}
 
+	// change comboStack to next valid combo
 	private void prepareNext() {
-		if (next == null) {
-			return;
-		}
-		do {
-			// We can add nextIndex to the stack
-			if (numLetters < maxWordLength && nextIndex < strings.size()) {
-				next.push(nextIndex);
-				numLetters += lengths[nextIndex];
-				nextIndex++;
-			} else {
-				// We need to remove an index from the stack
-				if (next.peek() == strings.size() - 1) {
-					int poppedIndex = next.pop();
-					numLetters -= lengths[poppedIndex];
-				}
-				
-				// We've gone through every combo
-				if (next.size() == 0) {
-					next = null;
+		while (comboStack != null) {
+			if (chunkToAdd < chunks.size() && comboLetters + chunks.get(chunkToAdd).length() <= maxWordLength) { // if we can add chunkToAdd, add it
+				comboStack.push(chunkToAdd);
+				comboLetters += chunks.get(chunkToAdd).length();
+				chunkToAdd++;
+				if (comboLetters >= minWordLength && comboStack.size() > 1) { // if the combo is long enough, it is valid so return
 					return;
 				}
-				
-				// Increment the last index in the stack and update numLetters
-				int poppedIndex = next.pop();
-				numLetters -= lengths[poppedIndex];
-				nextIndex = poppedIndex + 1;	
-				next.push(nextIndex);
-				numLetters += lengths[nextIndex];
-				nextIndex++;
+			} else if (comboStack.isEmpty()) { // we can't add a chunk and the combo is empty, there are no more possible combos
+				comboStack = null;
+			} else { // we can't add chunkToAdd, so pop the last chunk and set chunkToAdd to its successor (incrementing it)
+				int poppedChunk = comboStack.pop();
+				comboLetters -= chunks.get(poppedChunk).length();
+				chunkToAdd = poppedChunk + 1;
 			}
-		} while (numLetters < minWordLength || numLetters > maxWordLength || next.size() < 2);
+		}	
 	}
 }

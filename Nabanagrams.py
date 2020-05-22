@@ -4,7 +4,6 @@ maxWordLength = 0
 minWordLength = 3
 game = None
 
-
 def main():
 	print
 	print "---------------------------"
@@ -35,6 +34,7 @@ def main():
 			else:
 				enterGame(game)
 
+
 def setup(dictionaryFilename, minWordLength, maxWordLength):
 	f = open(dictionaryFilename)
 	dictionary = set()
@@ -48,6 +48,7 @@ def setup(dictionaryFilename, minWordLength, maxWordLength):
 			wordMap[''.join(sortedWord)] = word
 			if len(word) > maxWordLength:
 				maxWordLsength = len(word)
+
 
 def enterGame(game):
 	while True:
@@ -87,6 +88,7 @@ def enterGame(game):
 			if newCombo is not None:
 				game.formWord(newCombo, input, false)
 
+
 def enterSandbox(game):
 	while True:
 		game.printState()
@@ -104,6 +106,7 @@ def enterSandbox(game):
 			return
 		else:
 			game.addLetters(input)
+
 
 def findCombo(game, goal):
 	if goal is not None:
@@ -212,7 +215,7 @@ class Game:
 			self.yourWords.add(self.newWord)
 			self.yourPoints += len(self.newWord) - 2
 			sort(self.yourWords)
-
+			
 	def addLetters(self, input):
 		if not bool(re.match("^[a-zA-Z ]+", input)):
 			print("Input must only contain letters")
@@ -227,10 +230,10 @@ class Game:
 		sort(self.freeLetters)
 
 
-class Combos:
+#class Combos:
 
 
-class ComboIterator:
+#class ComboIterator:
 
 
 
