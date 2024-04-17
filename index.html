@@ -27,6 +27,7 @@
         .word {
             padding: 2px;
             width: fit-content;
+            letter-spacing: 3px;
         }
         #monkeyWords, #yourWords {
             background-color: wheat;
@@ -35,7 +36,7 @@
         }
         #game {
             padding: 20px;
-            width: 40%;
+            width: 700px;
             background-color: yellow;
             margin: auto;
             padding: 10px;
@@ -140,33 +141,36 @@
 
     goButton.onclick = () => {
         let word = input.value.toLowerCase().trim()
-        if (!dictionary.has(word)) {
+        if (word === "") {
+            message.innerHTML = "you didn't type anything though"
+            confused() 
+        } else if (!dictionary.has(word)) {
             message.innerHTML = "that not a word!"
-            confusedSound()
-            setMonkeyState("blink")
-            return
-        }
-        if (word.length < 3) {
-            message.innerHTML = "word must be 3 long or more"
-            confusedSound()
-            setMonkeyState("blink")
-            return
-        }
-        let combo = findValidCombo(word.toUpperCase())
-        if (combo === null) {
-            confusedSound()
-            setMonkeyState("blink")
-            message.innerHTML = "no way to make that!"
+            confused() 
+        } else if (word.length < 3) {
+            message.innerHTML = "word must be 3 letter or more"
+            confused() 
         } else {
-            happySound()
-            setMonkeyState("handstand")
-            removeCombo(combo)
-            yourWords.push(word.toUpperCase())
-            message.innerHTML = "good one!<br><br>now let me try"
-            input.value = ""
-            calculatePoints()
+            let combo = findValidCombo(word.toUpperCase())
+            if (combo === null) {
+                message.innerHTML = "no way to make that!"
+                confused() 
+            } else {
+                happySound()
+                setMonkeyState("handstand")
+                removeCombo(combo)
+                yourWords.push(word.toUpperCase())
+                message.innerHTML = "good one!<br><br>now let me try"
+                input.value = ""
+                calculatePoints()
+                renderState()
+            }
         }
-        renderState()
+    }
+
+    function confused() {
+        playSound("confused" + random(1, 5) + ".mp3")
+        setMonkeyState("blink")
     }
 
     button.onclick = () => {
@@ -213,7 +217,7 @@
         } else {
             happySound()
             setMonkeyState("banana")
-            message.innerHTML = "i found word!"
+            message.innerHTML = "ooh i got one!"
             while (combo != null) {
                 let newWord = anagramMap.get(combo.join("").split("").sort().join(""))
                 removeCombo(combo)
@@ -325,7 +329,7 @@
         }
     }
 
-    function confusedSound() { playSound("confused" + random(1, 5) + ".mp3") }
+    function confusedSound() {  }
 
     function playSound(name) {
         audio.src = "sound/" + name
