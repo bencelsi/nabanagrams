@@ -210,7 +210,7 @@
         if (combo === null) {
             sadSound()
             setMonkeyState("see")
-            message.innerHTML = "i can't find anything"
+            message.innerHTML = "i can't find anything!"
             if (lettersLeft.length > 0) {
                 message.innerHTML += "<br><br>flip new letter please"
             }
@@ -235,11 +235,11 @@
         setMonkeyState("guitar")
         playSound("guitar.wav")
         if (monkeyPoints > yourPoints) {
-            message.innerHTML = "i win! that ok you do better next time"
+            message.innerHTML = "i win! that ok you did good too"
         } else if (yourPoints > monkeyPoints) {
-            message.innerHTML = "you win! you did good job"
+            message.innerHTML = "you win! wow you must be smart monkey"
         } else {
-            message.innerHTML = "wow we tied! we both good"
+            message.innerHTML = "we tied! wow what are the chance"
         }
         goDiv.style.display = "none"
         message.innerHTML += "<br><br>play again?"
@@ -263,11 +263,10 @@
             }
         }
     }
-
-    // chunk: a group of tiles that can't be broken up. player's words and free tiles are both 'chunks' 
-    // combo: a group of at least 2 chunks. A combo is 'valid' if its letters can be rearranged to form a new word
     
     // Finds a valid combo from words and freeLetters, or returns null if there is none
+    // chunk: a group of tiles that can't be broken up. player's words and free tiles are both 'chunks' 
+    // combo: a group of at least 2 chunks. A combo is 'valid' if its letters can be rearranged to form a new word
     function findValidCombo(goal = null) {
         let sortedGoal = null
         let minLetters = 3
@@ -277,14 +276,13 @@
             minLetters = goal.length
             maxLetters = goal.length
         }
-        
-        let chunks = yourWords.concat(monkeyWords).concat(freeLetters) // chunks to consider
+        let chunks = monkeyWords.concat(yourWords).concat(freeLetters) // chunks to consider
         let comboStack = [] // stack of indexes, with index i representing the word at chunks[i]
         let indexToAdd = 0 // the index of the next chunk to add to the stack
         let numLetters = 0 // number of letters in the combo
 
         while (true) {
-            if (comboStack.length >= 2 && numLetters >= minLetters && numLetters <= maxLetters) {
+            if (numLetters >= minLetters && numLetters <= maxLetters && comboStack.length >= 2) {
                 let combo = []
                 let comboString = ""
                 for (let i = 0; i < comboStack.length; i++) {
@@ -297,7 +295,6 @@
                         return combo
                 }
             }
-            
             while (indexToAdd >= chunks.length || numLetters > maxLetters) {
                 if (comboStack.length === 0) {
                     return null
@@ -306,7 +303,6 @@
                 numLetters -= chunks[poppedIndex].length
                 indexToAdd = poppedIndex + 1
             }
-
             comboStack.push(indexToAdd)
             numLetters += chunks[indexToAdd].length
             indexToAdd++   
@@ -328,8 +324,6 @@
             playSound("happy" + random(1, 6) + ".mp3")
         }
     }
-
-    function confusedSound() {  }
 
     function playSound(name) {
         audio.src = "sound/" + name

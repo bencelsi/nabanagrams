@@ -1,4 +1,5 @@
 let dictionary = new Set([
+"a",
 "aa",
 "aah",
 "aahed",
@@ -71838,6 +71839,7 @@ let dictionary = new Set([
 "hysterotomies",
 "hysterotomy",
 "hyte",
+"i",
 "iamb",
 "iambi",
 "iambic",
