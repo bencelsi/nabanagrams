@@ -214,7 +214,7 @@ function pass() {
     let combo = findValidCombo()
     if (combo === null) {
         sadSound()
-        setMonkeyState("sad")
+        setMonkeyState("see")
         message.innerHTML = "i can't find anything!"
         if (lettersLeft.length > 0) {
             message.innerHTML += "<br><br>flip new letter please"
