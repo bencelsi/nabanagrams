@@ -35,7 +35,6 @@
             border-radius: 10px;
         }
         #game {
-            padding: 20px;
             width: 700px;
             background-color: yellow;
             margin: auto;
@@ -46,6 +45,12 @@
             margin: auto;
             width: fit-content;
             height: fit-content;
+        }
+        #options {
+            margin: auto;
+            background-color: wheat;
+            padding: 10px;
+            border-radius: 10px;
         }
     </style>
 </head>
@@ -77,18 +82,28 @@
             <br><br><br>
             <div id="lettersLeftDiv"></div>
         </div>
+        <br>
+        <div id="options">
+            Dictionary
+            <select id="dictionarySelector" onchange="changeDictionary()">
+                <option value="reasonable">Reasonable</option>
+                <option value="archaic">Archaic</option>
+            </select>
+        </div>
     </div>
     <!-- https://en.wikipedia.org/wiki/Anagrams_(game)#Rules -->
 </body>
-<script src="dictionary.js"></script>
+<script src="dictionary-reasonable.js"></script>
+<script src="dictionary-archaic.js"></script>
 <script>
-
 if (location.hostname === "") {
     document.title = "." + document.title
 }
 
+let dictionaries = [reasonableDictionary, archaicDictionary]
+
 let minWordLength = 3;
-let anagramMap = new Map(); // map of sorted word -> words
+let anagramMaps = [new Map(), new Map()] // map of sorted word -> words
 let initialLetterDistribution = [13, 3, 3, 6, 18, 3, 4, 3, 12, 2, 2, 5, 3, 8, 11, 3, 2, 9, 6, 9, 6, 3, 3, 2, 3, 2];
 
 // Elements:
@@ -100,6 +115,7 @@ let goButton = document.getElementById("goButton")
 let button = document.getElementById("button")
 let monkeyWordsHeader = document.getElementById("monkeyWordsHeader")
 let yourWordsHeader = document.getElementById("yourWordsHeader")
+let dictionarySelector = document.getElementById("dictionarySelector")
 let audio = new Audio();
 
 // Game state:
@@ -110,17 +126,20 @@ let yourWords = []
 let monkeyPoints = 0
 let yourPoints = 0
 let buttonState = "Flip 3"
-let maxWordLength = 0
+let maxWordLengths = [0, 0]
+let currentDictionary = 0
 
 // SETUP ANAGRAM MAP
-for (let word of dictionary) {
-    if (word.length < minWordLength) {
-        continue
+for (let i = 0; i <= 1; i++) {
+    for (let word of dictionaries[i]) {
+        if (word.length < minWordLength[i]) {
+            continue
+        }
+        maxWordLengths[i] = Math.max(maxWordLengths[i], word.length)
+        anagramMaps[i].set(word.toUpperCase().split("").sort().join(""), word.toUpperCase())
     }
-    maxWordLength = Math.max(maxWordLength, word.length)
-    anagramMap.set(word.toUpperCase().split("").sort().join(""), word.toUpperCase())
 }
-input.setAttribute("maxlength", maxWordLength)
+input.setAttribute("maxlength", maxWordLengths[1])
 
 setupGame()
 renderState()
@@ -144,12 +163,16 @@ function setupGame() {
     }
 }
 
+function changeDictionary() {
+    currentDictionary = dictionarySelector.value === "reasonable" ? 0 : 1
+}
+
 goButton.onclick = () => {
     let word = input.value.toLowerCase().trim()
     if (word === "") {
         message.innerHTML = "you didn't type anything though"
         confused() 
-    } else if (!dictionary.has(word)) {
+    } else if (!dictionaries[currentDictionary].has(word)) {
         message.innerHTML = "that not a word!"
         confused() 
     } else if (word.length < 3) {
@@ -171,11 +194,6 @@ goButton.onclick = () => {
             renderState()
         }
     }
-}
-
-function confused() {
-    playSound("confused" + random(1, 5) + ".mp3")
-    setMonkeyState("blink")
 }
 
 button.onclick = () => {
@@ -224,7 +242,7 @@ function pass() {
         setMonkeyState("banana")
         message.innerHTML = "ooh i got one!"
         while (combo != null) {
-            let newWord = anagramMap.get(combo.join("").split("").sort().join(""))
+            let newWord = anagramMaps[currentDictionary].get(combo.join("").split("").sort().join(""))
             removeCombo(combo)
             message.innerHTML += "<br><br><b>" + combo.join(" ") + " -> " + newWord
             monkeyWords.push(newWord)
@@ -273,9 +291,12 @@ function removeCombo(combo) {
 // chunk: a group of tiles that can't be broken up. player's words and free tiles are both 'chunks' 
 // combo: a group of at least 2 chunks. A combo is 'valid' if its letters can be rearranged to form a new word
 function findValidCombo(goal = null) {
-    let sortedGoal = goal == null ? null : goal.split("").sort().join("")
-    let minLetters = goal == null ? 3 : goal.length
-    let maxLetters = goal == null ? maxWordLength : goal.length
+    let maxLetters = goal === null ? maxWordLengths[currentDictionary] : goal.length
+    if (goal != null && goal.length > maxLetters) {
+        return null
+    }
+    let sortedGoal = goal === null ? null : goal.split("").sort().join("")
+    let minLetters = goal === null ? 3 : goal.length
     let chunks = monkeyWords.concat(yourWords).concat(freeLetters) // chunks to consider
     let comboStack = [] // stack of indexes, with index i representing the word at chunks[i]
     let indexToAdd = 0 // the index of the next chunk to add to the stack
@@ -290,7 +311,7 @@ function findValidCombo(goal = null) {
             }
             let sortedCombo = comboString.split("").sort().join("")
             if ((goal != null && sortedCombo === sortedGoal) 
-                || goal === null && anagramMap.has(sortedCombo)) {
+                || goal === null && anagramMaps[currentDictionary].has(sortedCombo)) {
                     return combo
             }
         }
@@ -306,6 +327,11 @@ function findValidCombo(goal = null) {
         numLetters += chunks[indexToAdd].length
         indexToAdd++   
     }
+}
+
+function confused() {
+    playSound("confused" + random(1, 5) + ".mp3")
+    setMonkeyState("blink")
 }
 
 function setMonkeyState(state) { monkey.src = "gifs/monkey-" + state + ".gif" }
@@ -358,5 +384,4 @@ function renderElements(divId, className, arr) {
         div.appendChild(element)
     }
 }
-
 </script>
