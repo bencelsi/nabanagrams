@@ -3,7 +3,7 @@
     <link rel='icon' type='image/x-icon' href='favicon.ico'>
     <style type="text/css">
         body {
-            background-color: lightyellow;
+            background-color: rgb(5, 53, 0);
             font-family: "Lucida Console", monospace;
             text-align: center;
         }
@@ -15,13 +15,14 @@
         input { font-size: 25; }
         .letter, .word {
             background-color: white;
-            border-color: rgb(199, 199, 199);
+            border-color: rgb(102, 61, 20);
             border-width: 2px;
             border-style: solid;
             border-radius: 5px;
             height: 18px;
             display: inline-block;
             margin: 2px;
+            /* font-size: 15pt; */
         }
         .letter { width: 20px; }
         .word {
@@ -29,8 +30,11 @@
             width: fit-content;
             letter-spacing: 3px;
         }
+        #board {
+            background-color: tan;
+            border-radius: 10px;
+        }
         #monkeyWords, #yourWords {
-            background-color: wheat;
             padding: 10px;
             border-radius: 10px;
             height: fit-content;
@@ -42,14 +46,13 @@
             padding: 10px;
             border-radius: 10px;
         }
+        h1 { color: yellow; }
         #words {
             margin: auto;
-            width: fit-content;
-            height: fit-content;
+            width: fit-content; height: fit-content;
         }
         #options {
             margin: auto;
-            background-color: wheat;
             padding: 10px;
             border-radius: 10px;
         }
@@ -58,22 +61,24 @@
 <body>
     <h1>N A B A N A G R A M S</h1>
     <div id="game">
-        <div style="height: 110px; background-color: rgb(255, 255, 255); padding: 10px; border-radius: 10px;">
-            <div>
-                <img style="float: left;" id="monkey">
-            </div>
+        <div style="height: 110px; background-color: white; padding: 10px; border-radius: 10px;">
+            <div><img style="float: left;" id="monkey"></div>
             <div id="message"></div>
         </div>
         <br>
-        <span id="monkeyWordsHeader"></span>
-        <div class="words" id="monkeyWords"></div>
+        <div id="board">
+            <br>
+            <span id="monkeyWordsHeader"></span>
+            <div class="words" id="monkeyWords"></div>
+            <br><br><br>
+            <div id="freeLetters"><br></div>
+            <br><br><br>
+            <div class="words" id="yourWords"></div>
+            <span id="yourWordsHeader"></span>
+            <br><br>
+        </div>
         <br><br>
-        <div id="freeLetters"><br></div>
-        <br><br>
-        <span id="yourWordsHeader"></span>
-        <div class="words" id="yourWords"></div>
-        <br>
-        <div style="background-color: rgb(230, 230, 230); margin: auto; padding: 10px; border-radius: 10px;">
+        <div style="background-color: wheat; margin: auto; padding: 10px; border-radius: 10px;">
             <div id="goDiv" style="display: none;">
                 <b>Word: </b><input type="text" id="input"/> <button id="goButton">Go</button>
                 <br>
@@ -82,65 +87,70 @@
             <button id="button"></button>
             <br><br><br>
             <div id="lettersLeftDiv"></div>
+            <br><br><br>
+            <div id="options">
+                Dictionary
+                <select id="dictSelector" onchange="changeDict()">
+                    <option value="reasonable">Reasonable</option>
+                    <option value="archaic">Archaic</option>
+                </select>
+                <!-- Music <input type="checkbox"> -->
+            </div>
         </div>
-        <br>
-        <div id="options">
-            Dictionary
-            <select id="dictionarySelector" onchange="changeDictionary()">
-                <option value="reasonable">Reasonable</option>
-                <option value="archaic">Archaic</option>
-            </select>
-        </div>
+        
     </div>
     <!-- https://en.wikipedia.org/wiki/Anagrams_(game)#Rules -->
 </body>
-<script src="dictionary-reasonable.js"></script>
-<script src="dictionary-archaic.js"></script>
+<script src="dict-reasonable.js"></script>
+<script src="dict-archaic.js"></script>
 <script>
-if (location.hostname === "") {
-    document.title = "." + document.title
-}
+// TODOs - make hoots not random, based on word sizes, time w no words, etc
+// center monkey text
 
-let dictionaries = [reasonableDictionary, archaicDictionary]
+if (location.hostname == "") document.title = "." + document.title
 
+// Elements:
+const MONKEY =              document.getElementById("monkey")
+const MESSAGE =             document.getElementById("message")
+const INPUT =               document.getElementById("input")
+const GO_DIV =              document.getElementById("goDiv")
+const GO_BUTTON =           document.getElementById("goButton")
+const BUTTON =              document.getElementById("button")
+const MONKEY_WORD_HEADER =  document.getElementById("monkeyWordsHeader")
+const YOUR_WORDS_HEADER =   document.getElementById("yourWordsHeader")
+const DICT_SELECTOR =       document.getElementById("dictSelector")
+const audio = new Audio();
+
+//Button States
+const FLIP_3 = 'Flip 3'; const FLIP = 'Flip'; const PASS = 'Pass'; 
+const END_GAME = 'End Game'; const PLAY_AGAIN = 'Play Again'
+
+// Config:
+let dicts = [reasonableDict, archaicDict]
 let minWordLength = 3;
 let anagramMaps = [new Map(), new Map()] // map of sorted word -> words
 let initialLetterDistribution = [13, 3, 3, 6, 18, 3, 4, 3, 12, 2, 2, 5, 3, 8, 11, 3, 2, 9, 6, 9, 6, 3, 3, 2, 3, 2];
 
-// Elements:
-let monkey = document.getElementById("monkey")
-let message = document.getElementById("message")
-let input = document.getElementById("input")
-let goDiv = document.getElementById("goDiv")
-let goButton = document.getElementById("goButton")
-let button = document.getElementById("button")
-let monkeyWordsHeader = document.getElementById("monkeyWordsHeader")
-let yourWordsHeader = document.getElementById("yourWordsHeader")
-let dictionarySelector = document.getElementById("dictionarySelector")
-let audio = new Audio();
-
-// Game state:
+// Game State:
 let lettersLeft = []
 let freeLetters = []
 let monkeyWords = []
 let yourWords = []
 let monkeyPoints = 0
 let yourPoints = 0
-let buttonState = "Flip 3"
+let buttonState = FLIP_3
 let maxWordLengths = [0, 0]
-let currentDictionary = 0
+let currentDict = 0
 
 // SETUP ANAGRAM MAP
 for (let i = 0; i <= 1; i++) {
-    for (let word of dictionaries[i]) {
-        if (word.length < minWordLength[i]) {
-            continue
-        }
+    for (let word of dicts[i]) {
+        if (word.length < minWordLength[i]) continue
         maxWordLengths[i] = Math.max(maxWordLengths[i], word.length)
-        anagramMaps[i].set(word.toUpperCase().split("").sort().join(""), word.toUpperCase())
+        anagramMaps[i].set(word.toUpperCase().split('').sort().join(''), word.toUpperCase())
     }
 }
-input.setAttribute("maxlength", maxWordLengths[1])
+INPUT.setAttribute('maxlength', maxWordLengths[1])
 
 setupGame()
 renderState()
@@ -149,12 +159,12 @@ function setupGame() {
     freeLetters = []
     monkeyWords = []
     yourWords = []
-    buttonState = "Flip 3"
-    input.value = ""
-    goDiv.style.display = "none"
-    setMonkeyState("vine")
-    playSound("newGame.wav")
-    message.innerHTML = "HOO HOO HA HA! flip 3 to start!"
+    buttonState = FLIP_3
+    INPUT.value = ''
+    GO_DIV.style.display = 'none'
+    setMonkeyState('vine')
+    playSound('newGame.wav')
+    MESSAGE.innerHTML = 'HOO HOO HA HA! flip 3 to start!'
     
     // set up letters 
     for (let i = 0; i < initialLetterDistribution.length; i++) {
@@ -164,58 +174,54 @@ function setupGame() {
     }
 }
 
-function changeDictionary() {
-    currentDictionary = dictionarySelector.value === "reasonable" ? 0 : 1
-}
 
-goButton.onclick = () => {
-    let word = input.value.toLowerCase().trim()
-    if (word === "") {
-        message.innerHTML = "you didn't type anything though"
-        confused() 
-    } else if (!dictionaries[currentDictionary].has(word)) {
-        message.innerHTML = "that not a word!"
-        confused() 
+let music = new Audio(); 
+music.loop = true; 
+music.src = 'sound/Jungleloop.mp3'
+music.volume = .75
+
+function changeDict() { currentDict = DICT_SELECTOR.value == 'reasonable' ? 0 : 1 }
+
+GO_BUTTON.onclick = () => {
+    let word = INPUT.value.toLowerCase().trim()
+    if (word == '') {
+        MESSAGE.innerHTML = "you didn't type anything though"; confused() 
+    } else if (!dicts[currentDict].has(word)) {
+        MESSAGE.innerHTML = 'that not a word!'; confused() 
     } else if (word.length < 3) {
-        message.innerHTML = "word must be 3 letter or more"
-        confused() 
+        MESSAGE.innerHTML = 'word must be 3 letter or more'; confused() 
     } else {
         let combo = findValidCombo(word.toUpperCase())
-        if (combo === null) {
-            message.innerHTML = "no way to make that!"
-            confused() 
+        if (combo == null) {
+            MESSAGE.innerHTML = 'no way to make that!'; confused() 
         } else {
             happySound()
-            setMonkeyState("handstand")
+            setMonkeyState('handstand')
             removeCombo(combo)
             yourWords.push(word.toUpperCase())
-            message.innerHTML = "good one!<br><br>now let me try"
-            input.value = ""
+            MESSAGE.innerHTML = 'good one!<br><br>now let me try'
+            INPUT.value = ''
             calculatePoints()
             renderState()
         }
     }
 }
 
-button.onclick = () => {
-    if (buttonState === "Flip" || buttonState === "Flip 3") {
-        flip()
-    } else if (buttonState === "Pass") {
-        pass()
-    } else if (buttonState === "End Game") {
-        endGame()
-    } else if (buttonState === "Play Again") {
-        setupGame()
-    }
+BUTTON.onclick = () => {
+    if (buttonState == FLIP_3) { music.currentTime = 0; music.play(); flip() }
+    else if (buttonState == FLIP) flip()
+    else if (buttonState == PASS) pass()
+    else if (buttonState == END_GAME) endGame()
+    else if (buttonState == PLAY_AGAIN) setupGame()
     renderState()
 }
 
 function flip() {
-    playSound("flip.wav")
+    playSound('flip.wav')
     let numToFlip = 1
-    if (buttonState === "Flip 3") {
+    if (buttonState == FLIP_3) {
         numToFlip = 3
-        goDiv.style.display = "block"
+        GO_DIV.style.display = 'block'
     }
     let letters = []
     for (let i = 0; i < numToFlip; i++)  {
@@ -223,64 +229,60 @@ function flip() {
         letters.push(letter)
         freeLetters.push(letter)
     }
-    buttonState = "Pass"
-    message.innerHTML = "you flipped: <b>" + letters.join(" ") + "</b><br><br>make a word! or let me try!"
-    input.value = ""
-    setMonkeyState("vine")
+    buttonState = PASS
+    MESSAGE.innerHTML = 'you flip: <b>' + letters.join(' ') + '</b><br><br>make a word! or let me try!'
+    INPUT.value = ''
+    setMonkeyState('vine')
 }
 
 function pass() {
     let combo = findValidCombo()
-    if (combo === null) {
+    if (combo == null) {
         sadSound()
-        setMonkeyState("see")
-        message.innerHTML = "i can't find anything!"
-        if (lettersLeft.length > 0) {
-            message.innerHTML += "<br><br>flip new letter please"
-        }
+        setMonkeyState('see')
+        MESSAGE.innerHTML = "i can't find anything!"
+        if (lettersLeft.length > 0) MESSAGE.innerHTML += '<br><br>flip new letter please'
     } else {
         happySound()
-        setMonkeyState("banana")
-        message.innerHTML = "ooh i got one!"
+        setMonkeyState('banana')
+        MESSAGE.innerHTML = 'oo oo i got one!'
         while (combo != null) {
-            let newWord = anagramMaps[currentDictionary].get(combo.join("").split("").sort().join(""))
+            let newWord = anagramMaps[currentDict].get(combo.join('').split('').sort().join(''))
             removeCombo(combo)
-            message.innerHTML += "<br><br><b>" + combo.join(" ") + " -> " + newWord
+            MESSAGE.innerHTML += '<br><br><b>' + combo.join(' ') + ' -> ' + newWord
             monkeyWords.push(newWord)
             combo = findValidCombo()
-            input.value = ""
+            INPUT.value = ''
         }
         calculatePoints()
     }
-    buttonState = lettersLeft.length > 0 ? "Flip" : "End Game"
+    buttonState = lettersLeft.length > 0 ? FLIP : END_GAME
 }
 
 function endGame() {
-    playSound("guitar.wav")
-    setMonkeyState("guitar")
-    if (monkeyPoints > yourPoints) {
-        message.innerHTML = "i win! that ok you did good too"
-    } else if (yourPoints > monkeyPoints) {
-        message.innerHTML = "you win! wow you must be smart monkey"
-    } else {
-        message.innerHTML = "we tied! wow what are the chance"
-    }
-    goDiv.style.display = "none"
-    message.innerHTML += "<br><br>play again?"
-    buttonState = "Play Again"
+    console.log('end')
+    music.pause()
+    playSound('guitar.wav')
+    setMonkeyState('guitar')
+    if (monkeyPoints > yourPoints) MESSAGE.innerHTML = 'me win! that ok you did good too'
+    else if (yourPoints > monkeyPoints) MESSAGE.innerHTML = 'you win! wow you one smart monkey'
+    else MESSAGE.innerHTML = 'we tied! wow what are the chance huh'
+
+    GO_DIV.style.display = 'none'
+    MESSAGE.innerHTML += '<br><br>play again?'
+    buttonState = PLAY_AGAIN
 }
 
 // finds and removes the chunks (words and letters) from the game
 function removeCombo(combo) {
     for (let i = 0; i < combo.length; i++) {
-        if (combo[i].length === 1) {
+        if (combo[i].length == 1) {
             let index = freeLetters.indexOf(combo[i])
             freeLetters.splice(index, 1)
         } else {
             let index = yourWords.indexOf(combo[i])
-            if (index != -1) {
-                yourWords.splice(index, 1)
-            } else {
+            if (index != -1) { yourWords.splice(index, 1) }
+            else {
                 let index = monkeyWords.indexOf(combo[i])
                 monkeyWords.splice(index, 1)
             }
@@ -292,12 +294,12 @@ function removeCombo(combo) {
 // chunk: a group of tiles that can't be broken up. player's words and free tiles are both 'chunks' 
 // combo: a group of at least 2 chunks. A combo is 'valid' if its letters can be rearranged to form a new word
 function findValidCombo(goal = null) {
-    let maxLetters = goal === null ? maxWordLengths[currentDictionary] : goal.length
+    let maxLetters = goal == null ? maxWordLengths[currentDict] : goal.length
     if (goal != null && goal.length > maxLetters) {
         return null
     }
-    let sortedGoal = goal === null ? null : goal.split("").sort().join("")
-    let minLetters = goal === null ? 3 : goal.length
+    let sortedGoal = goal == null ? null : goal.split('').sort().join('')
+    let minLetters = goal == null ? 3 : goal.length
     let chunks = monkeyWords.concat(yourWords).concat(freeLetters) // chunks to consider
     let comboStack = [] // stack of indexes, with index i representing the word at chunks[i]
     let indexToAdd = 0 // the index of the next chunk to add to the stack
@@ -305,21 +307,19 @@ function findValidCombo(goal = null) {
     while (true) {
         if (numLetters >= minLetters && numLetters <= maxLetters && comboStack.length >= 2) {
             let combo = []
-            let comboString = ""
+            let comboString = ''
             for (let i = 0; i < comboStack.length; i++) {
                 combo.push(chunks[comboStack[i]])
                 comboString += chunks[comboStack[i]]
             }
-            let sortedCombo = comboString.split("").sort().join("")
-            if ((goal != null && sortedCombo === sortedGoal) 
-                || goal === null && anagramMaps[currentDictionary].has(sortedCombo)) {
+            let sortedCombo = comboString.split('').sort().join('')
+            if ((goal != null && sortedCombo == sortedGoal) 
+                || goal == null && anagramMaps[currentDict].has(sortedCombo)) {
                     return combo
             }
         }
         while (indexToAdd >= chunks.length || numLetters > maxLetters) {
-            if (comboStack.length === 0) {
-                return null
-            }
+            if (comboStack.length == 0) return null
             let poppedIndex = comboStack.pop()
             numLetters -= chunks[poppedIndex].length
             indexToAdd = poppedIndex + 1
@@ -330,26 +330,15 @@ function findValidCombo(goal = null) {
     }
 }
 
-function confused() {
-    playSound("confused" + random(1, 5) + ".mp3")
-    setMonkeyState("blink")
-}
+function confused() { playSound('confused' + random(1, 5) + '.mp3'); setMonkeyState('blink') }
 
-function setMonkeyState(state) { monkey.src = "gifs/monkey-" + state + ".gif" }
+function setMonkeyState(state) { MONKEY.src = "gifs/monkey-" + state + ".gif" }
 
 function random(min, max) { return (min + (Math.floor(Math.random() * (max + 1 - min)))) }
 
-function sadSound() {
-    if (random(1, 5) === 5)  {
-        playSound("sad" + random(1, 5) + ".mp3")
-    }
-}
+function sadSound() { if (random(1, 4) == 1)  playSound("sad" + random(1, 5) + ".mp3") }
 
-function happySound() {
-    if (random(1, 5) === 5)  {
-        playSound("happy" + random(1, 6) + ".mp3")
-    }
-}
+function happySound() { if (random(1, 3) == 1)  { playSound("happy" + random(1, 6) + ".mp3") }}
 
 function playSound(name) {
     audio.src = "sound/" + name
@@ -362,10 +351,10 @@ function calculatePoints() {
 }
 
 function renderState() {
-    button.innerHTML = buttonState
-    monkeyWordsHeader.innerHTML = "<b>Monkey's Words:</b> (" + monkeyPoints + " pts)"
-    yourWordsHeader.innerHTML = "<b>Your Words:</b> (" + yourPoints + " pts)"
-    lettersLeftDiv.innerHTML = "<b>Letters Left:</b> " +  lettersLeft.length
+    BUTTON.innerHTML = buttonState
+    MONKEY_WORD_HEADER.innerHTML = "<b>Monkey Words</b> (" + monkeyPoints + " pts)"
+    YOUR_WORDS_HEADER.innerHTML = "<b>Your Words</b> (" + yourPoints + " pts)"
+    lettersLeftDiv.innerHTML = "<b>" + lettersLeft.length + " Letters Left</b>"
     renderElements("freeLetters", "letter", freeLetters)
     renderElements("monkeyWords", "word", monkeyWords)
     renderElements("yourWords", "word", yourWords)   
@@ -373,9 +362,8 @@ function renderState() {
 
 function renderElements(divId, className, arr) {
     let div = document.getElementById(divId)
-    if (arr.length === 0) {
-        div.innerHTML = className === "word" ? "(None)" : "<br>"
-        return
+    if (arr.length == 0) {
+        div.innerHTML = className == "word" ? "" : "<br>"; return
     }
     div.innerHTML = ""
     for (let i = 0; i < arr.length; i++) {

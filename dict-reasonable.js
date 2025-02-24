@@ -1,4 +1,4 @@
-let reasonableDictionary = new Set([
+let reasonableDict = new Set([
 "a",
 "aah",
 "aardvark",

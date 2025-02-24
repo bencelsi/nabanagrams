@@ -1,4 +1,4 @@
-let archaicDictionary = new Set([
+let archaicDict = new Set([
 "a",
 "aa",
 "aah",
