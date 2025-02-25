@@ -3,7 +3,7 @@
     <link rel='icon' type='image/x-icon' href='favicon.ico'>
     <style type="text/css">
         body {
-            background-color: rgb(5, 53, 0);
+            background-color: rgb(10, 39, 0);
             font-family: "Lucida Console", monospace;
             text-align: center;
         }
@@ -13,17 +13,17 @@
             font-size: 25;
         }
         input { font-size: 25; }
+
         .letter, .word {
-            background-color: white;
-            border-color: rgb(102, 61, 20);
-            border-width: 2px;
-            border-style: solid;
-            border-radius: 5px;
+            background-color: lightyellow;
+            border-color: rgb(95, 102, 20); border-width: 2px; border-style: solid; border-radius: 5px;
             height: 18px;
             display: inline-block;
             margin: 2px;
+            width: fit-content;
             /* font-size: 15pt; */
         }
+
         .letter { width: 20px; }
         .word {
             padding: 2px;
@@ -52,17 +52,19 @@
             width: fit-content; height: fit-content;
         }
         #options {
-            margin: auto;
-            padding: 10px;
+            margin: auto; padding: 10px;
             border-radius: 10px;
+        }
+        #monkeyDiv {
+            height: 110px; background-color: white; padding: 10px; border-radius: 10px; margin: auto
         }
     </style>
 </head>
 <body>
-    <h1>N A B A N A G R A M S</h1>
+    <h1>• • • N A B A N A G R A M S • • •</h1>
     <div id="game">
-        <div style="height: 110px; background-color: white; padding: 10px; border-radius: 10px;">
-            <div><img style="float: left;" id="monkey"></div>
+        <div id="monkeyDiv">
+            <div style="position: absolute;"><img id="monkey"></div>
             <div id="message"></div>
         </div>
         <br>
@@ -87,7 +89,7 @@
             <button id="button"></button>
             <br><br><br>
             <div id="lettersLeftDiv"></div>
-            <br><br><br>
+            <br><br>
             <div id="options">
                 Dictionary
                 <select id="dictSelector" onchange="changeDict()">
@@ -97,15 +99,18 @@
                 <!-- Music <input type="checkbox"> -->
             </div>
         </div>
-        
     </div>
     <!-- https://en.wikipedia.org/wiki/Anagrams_(game)#Rules -->
 </body>
-<script src="dict-reasonable.js"></script>
-<script src="dict-archaic.js"></script>
+<script src="dicts/dict-reasonable.js"></script>
+<script src="dicts/dict-archaic.js"></script>
 <script>
-// TODOs - make hoots not random, based on word sizes, time w no words, etc
-// center monkey text
+// TODOs 
+// make hoots not random, based on word sizes, time w no words, etc
+// music checkbox
+// flip after making a word ?
+// difficulty levels
+// take word roots into account
 
 if (location.hostname == "") document.title = "." + document.title
 
@@ -122,7 +127,7 @@ const DICT_SELECTOR =       document.getElementById("dictSelector")
 const audio = new Audio();
 
 //Button States
-const FLIP_3 = 'Flip 3'; const FLIP = 'Flip'; const PASS = 'Pass'; 
+const FLIP_3 = 'Flip 3'; const FLIP = 'Flip'; const PASS = 'Let Monkey Try'; 
 const END_GAME = 'End Game'; const PLAY_AGAIN = 'Play Again'
 
 // Config:
@@ -267,7 +272,6 @@ function endGame() {
     if (monkeyPoints > yourPoints) MESSAGE.innerHTML = 'me win! that ok you did good too'
     else if (yourPoints > monkeyPoints) MESSAGE.innerHTML = 'you win! wow you one smart monkey'
     else MESSAGE.innerHTML = 'we tied! wow what are the chance huh'
-
     GO_DIV.style.display = 'none'
     MESSAGE.innerHTML += '<br><br>play again?'
     buttonState = PLAY_AGAIN
