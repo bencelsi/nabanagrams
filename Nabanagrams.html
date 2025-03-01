@@ -8,7 +8,7 @@
             text-align: center;
         }
         button {
-            background-color:  salmon;
+            background-color:  orange;
             font-family: "Lucida Console", monospace;
             font-size: 25;
             padding: 5px;
@@ -181,7 +181,7 @@ function setupGame() {
     GO_DIV.style.display = 'none'
     setMonkeyState('vine')
     playSound('newGame.wav')
-    MESSAGE.innerHTML = 'HOO HOO HA HA! flip 3 to start!'
+    MESSAGE.innerHTML = 'HOO HOO HA HA! welcome to nabanagrams. flip 3 to start!'
     
     // set up letters 
     for (let i = 0; i < initialLetterDistribution.length; i++) {
@@ -354,8 +354,7 @@ function random(min, max) { return (min + (Math.floor(Math.random() * (max + 1 -
 
 function sadSound() { if (random(1, 4) == 1)  playSound("sad" + random(1, 5) + ".mp3") }
 
-function happySound() {
-    if (random(1, 3) == 1)  { playSound("happy" + random(1, 6) + ".mp3") }}
+function happySound() { if (random(1, 3) == 1)  { playSound("happy" + random(1, 6) + ".mp3") }}
 
 function playSound(name) {
     audio.src = "sound/" + name
