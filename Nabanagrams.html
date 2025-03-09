@@ -216,7 +216,8 @@ GO_BUTTON.onclick = () => {
             setMonkeyState('handstand')
             removeCombo(combo)
             yourWords.push(word.toUpperCase())
-            MESSAGE.innerHTML = 'good one!<br><br>now let me try'
+            MESSAGE.innerHTML = 'good one!<br><br>now flip new letter!'
+            buttonState = FLIP
             INPUT.value = ''
             calculatePoints()
             renderState()
